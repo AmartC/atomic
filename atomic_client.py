@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     elif(sys.argv[1] == "verify"):
         try:
-            resp = dbus_proxy.verify(sys.argv[2:], False)
+            resp = dbus_proxy.verify(sys.argv[2:])
 
             for r in resp:
                 print r
@@ -118,7 +118,6 @@ if __name__ == "__main__":
 
     elif(sys.argv[1] == "diff"):
         try:
-            print "-"*50
             resp = dbus_proxy.diff(sys.argv[2], sys.argv[3], True)
             for key in resp.keys():
                 print key

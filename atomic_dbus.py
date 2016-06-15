@@ -29,6 +29,7 @@ class atomic_dbus(slip.dbus.service.Object):
             self.import_location = None
             self.export_location = None
             self.compares = []
+            self.rootfs = None
             self.json = False
             self.no_files = False
             self.names_only = False
