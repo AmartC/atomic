@@ -9,13 +9,11 @@ from slip.dbus import polkit
 class AtomicDBus (object):
     def __init__(self):
         self.bus = dbus.SystemBus()
-        self.dbus_object = self.bus.get_object("org.atomic",
-                                               "/org/atomic/object")
+        self.dbus_object = self.bus.get_object("org.atomic", "/org/atomic/object")
 
     @polkit.enable_proxy
     def version(self, image, recurse):
-        ret = self.dbus_object.version(image, recurse,
-                                        dbus_interface="org.atomic")
+        ret = self.dbus_object.version(image, recurse, dbus_interface="org.atomic")
         return ret
     @polkit.enable_proxy
     def verify(self, image):
@@ -54,104 +52,50 @@ class AtomicDBus (object):
 if __name__ == "__main__":
     try:
         dbus_proxy = AtomicDBus()
-    except dbus.DBusException as e:
-        print e
-
-    if(sys.argv[1] == "version"):
-        if sys.argv[2] == "-r":
-            try:
+        if(sys.argv[1] == "version"):
+            if sys.argv[2] == "-r":
                 resp = dbus_proxy.version(sys.argv[3:], True)
-            except dbus.DBusException as e:
-                print e
-        else:
-            try:
+            else:
                 resp = dbus_proxy.version(sys.argv[2:], False)
-            except dbus.DBusException as e:
-                print e
-
-        for r in resp:
-            for v in r["Version"]:
-                print(str(v["Id"]), str(v["Version"]), str(v["Tag"]))
-
-    elif(sys.argv[1] == "verify"):
-        try:
-            resp = dbus_proxy.verify(sys.argv[2:])
 
             for r in resp:
+                for v in r["Version"]:
+                    print(str(v["Id"]), str(v["Version"]), str(v["Tag"]))
+
+        elif(sys.argv[1] == "verify"):
+            resp = dbus_proxy.verify(sys.argv[2:])
+            for r in resp:
                 print r
-        except dbus.DBusException as e:
-            print e
 
-        except ValueError as v:
-            print v
-
-    elif(sys.argv[1] == "storage"):
-        if(sys.argv[2] == "export"):
-            try:
+        elif(sys.argv[1] == "storage"):
+            #handles atomic storage export
+            if(sys.argv[2] == "export"):
                 dbus_proxy.storage_export("/var/lib/Docker", "/var/lib/atomic/migrate", False)
 
-            except dbus.DBusException as e:
-                print e
-
-            except ValueError as v:
-                print v
-
-        elif(sys.argv[2] == "import"):
-            try:
+            #handles atomic storage import
+            elif(sys.argv[2] == "import"):
                 dbus_proxy.storage_import("/var/lib/Docker", "/var/lib/atomic/migrate")
 
-            except dbus.DBusException as e:
-                print e
-
-            except ValueError as v:
-                print v
-
-        elif(sys.argv[2] == "reset"):
-            try:
+            #handles atomic storage reset
+            elif(sys.argv[2] == "reset"):
                 dbus_proxy.storage_reset()
 
-            except dbus.DBusException as e:
-                print e
-
-            except ValueError as v:
-                print v
-
-    elif(sys.argv[1] == "diff"):
-        try:
+        elif(sys.argv[1] == "diff"):
+            #case where rpms flag is passed in
             resp = dbus_proxy.diff(sys.argv[2], sys.argv[3], True)
             for key in resp.keys():
                 print key
                 for data in resp[key]:
                     print data
 
-        except dbus.DBusException as e:
-            print e
-
-        except ValueError as v:
-            print v
-
-    elif(sys.argv[1] == "top"):
-        try:
+        elif(sys.argv[1] == "top"):
             resp = dbus_proxy.top(1,[],1)
 
-        except dbus.DBusException as e:
-            print e
-
-        except ValueError as v:
-            print v
-
-    elif(sys.argv[1] == "scan"):
-        try:
+        elif(sys.argv[1] == "scan"):
             resp = dbus_proxy.scan([],[],True, False, False, True, False)
             print resp
 
-        except dbus.DBusException as e:
-            print e
-
-        except ValueError as v:
-            print v
-
-
-
-
-    #dbus_proxy.storage_export("/var/lib/Docker", "/var/lib/atomic/migrate", False)
+    except dbus.DBusException as e:
+        print e
+    except ValueError as v:
+        print v

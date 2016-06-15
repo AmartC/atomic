@@ -9,8 +9,7 @@ from slip.dbus import polkit
 from Atomic import Atomic
 from Atomic.verify import Verify
 from Atomic.storage import Storage
-#from Atomic.diff import Diff
-from Atomic.diffDbus import Diff
+from Atomic.diff import Diff
 from Atomic.top import Top
 from Atomic.scan import Scan
 
@@ -67,14 +66,14 @@ class atomic_dbus(slip.dbus.service.Object):
     image should be updated
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asb', out_signature='av')
-    def verify(self, images, verbose=False):
+    @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
+    def verify(self, images):
         verifications = []
         verify = Verify()
         for image in images:
             args = self.Args()
             args.image = image
-            args.verbose = verbose
+            args.verbose = True
             verify.set_args(args)
             verifications.append({"Image": image,
                                   "Verification": verify.verify()}) #pylint: disable=no-member

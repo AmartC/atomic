@@ -7,12 +7,15 @@ from . import util
 from . import mount
 from . import Atomic
 
+''' This file is currently for the dbus call to diff which instead of outputing the results of diff onto the server side, will send over the arguments to the client which can then be formatted appropriately'''
+
 class Diff(Atomic):
     def diff(self):
         '''
         Allows you to 'diff' the RPMs between two different docker images|containers.
         :return: None
         '''
+        diff_dict = dict()
         helpers = DiffHelpers(self.args)
         images = self.args.compares
         # Check to make sure each input is valid
@@ -33,18 +36,34 @@ class Diff(Atomic):
                         raise ValueError("{0} is not RPM based.".format(rpmimage.name))
                     rpmimage._get_rpm_content()
                     rpm_image_list.append(rpmimage)
+            file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
 
             if not self.args.no_files:
-                helpers.output_files(images, image_list)
+                diff_dict[image_list[0].name] = file_diff.left
+                diff_dict[image_list[1].name] = file_diff.right
+                diff_dict['files_differ'] = file_diff.common_diff
 
             if self.args.rpms:
-                helpers.output_rpms(rpm_image_list)
+                ip = RpmPrint(rpm_image_list)
+                diff_dict['{}_rpms'.format(ip.i1.name)] = []
+                diff_dict['{}_rpms'.format(ip.i2.name)] = []
+                if ip.has_diff:
+                    for rpm in ip.all_rpms:
+                        if rpm in ip.i1.rpms and rpm in ip.i2.rpms:
+                            diff_dict['{}_rpms'.format(ip.i1.name)].append(rpm)
+                            diff_dict['{}_rpms'.format(ip.i2.name)].append(rpm)
 
-            # Clean up
+                        elif rpm in ip.i1.rpms:
+                            diff_dict['{}_rpms'.format(ip.i1.name)].append(rpm)
+
+                        elif rpm in ip.i2.rpms:
+                            diff_dict['{}_rpms'.format(ip.i2.name)].append(rpm)
+
+
             helpers._cleanup(image_list)
 
-            if self.args.json:
-                util.output_json(helpers.json_out)
+            return diff_dict
+
         except KeyboardInterrupt:
             util.write_out("Quitting...")
             helpers._cleanup(image_list)
