@@ -10,7 +10,7 @@ from Atomic import Atomic
 from Atomic.verify import Verify
 from Atomic.storage import Storage
 #from Atomic.diff import Diff
-from Atomic.diffCp import Diff
+from Atomic.diffDbus import Diff
 from Atomic.top import Top
 from Atomic.scan import Scan
 
@@ -130,6 +130,25 @@ class atomic_dbus(slip.dbus.service.Object):
         args.driver = driver
         storage.set_args(args)
         storage.modify()
+
+    """
+    The diff method shows differences between two container images, file diff or RPMS.
+    """
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='ssb',
+                         out_signature='a{sas}')
+    def diff(self,first,second, rpms=False):
+        diff = Diff()
+        args = self.Args()
+        args.compares.append(first)
+        args.compares.append(second)
+        args.json = False
+        args.no_files = False
+        args.names_only = False
+        args.rpms = rpms
+        args.verbose = True
+        diff.set_args(args)
+        return diff.diff()
 
     """
     The top method shows top-like stats about processes running inside containers.
