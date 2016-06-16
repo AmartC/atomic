@@ -107,7 +107,6 @@ class Diff(Atomic):
         for image in image_list:
             rpmimage = RpmDiff(image.chroot, image.name, self.args.names_only)
             if not rpmimage.is_rpm:
-                helpers._cleanup(image_list)
                 raise ValueError("{0} is not RPM based.".format(rpmimage.name))
             rpmimage._get_rpm_content()
             rpm_image_list.append(rpmimage)

@@ -126,7 +126,7 @@ def create_parser(atomic):
     diffp = subparser.add_parser(
     "diff", help=_("Show differences between two container images, file diff or RPMS."),
     epilog="atomic diff 'image1|container1' 'image2|container2'")
-    diffp.set_defaults(_class=Diff, func='diff')
+    diffp.set_defaults(_class=Diff, func='diff_tty')
     diffp.add_argument("compares", nargs=2,
                        help=_("Container images to compare"))
     diffp.add_argument("--json", default=False, action='store_true',

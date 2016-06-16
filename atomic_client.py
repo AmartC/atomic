@@ -46,8 +46,8 @@ class AtomicDBus (object):
         self.dbus_object.top([],interval, optional, num_iterations, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def scan(self, scan_targets, scanners, verbose, rootfs, images, containers):
-        self.dbus_object.scan([],[], True, False, True, False, dbus_interface="org.atomic")
+    def scan(self, scan_targets, scanners, verbose, rootfs,all, images, containers):
+        self.dbus_object.scan([],[], True, False, False, True, False, dbus_interface="org.atomic")
 
 if __name__ == "__main__":
     try:

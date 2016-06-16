@@ -170,7 +170,7 @@ class atomic_dbus(slip.dbus.service.Object):
     The scan method scans an image or container for CVEs.
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asasbasbasb',
+    @dbus.service.method("org.atomic", in_signature='asasbasbbb',
                          out_signature='')
     def scan(self, scan_targets=[], scanners=None,verbose=False, rootfs=[], all=False, images=False, containers=False ):
         scan = Scan()
