@@ -102,6 +102,7 @@ class Diff(Atomic):
             util.write_out("Quitting...")
             helpers._cleanup(image_list)
 
+    # Functipn that will create a list of rpm images taking in a list of images.
     def create_rpm_image_list(self, image_list):
         rpm_image_list = []
         for image in image_list:
@@ -181,50 +182,6 @@ class DiffHelpers(object):
                 sys.stderr.write("{}\n".format(e))
                 sys.exit(1)
         return image_list
-
-    def output_files(self, images, image_list):
-        """
-        Prints out the file differences when applicable
-        :param images:
-        :param image_list:
-        :return: None
-        """
-        file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
-        for image in image_list:
-            self.json_out[image.name] = {'{}_only'.format(image.name): file_diff._get_only(image.chroot)}
-        self.json_out['files_differ'] = file_diff.common_diff
-
-        if not self.args.json:
-            file_diff.print_results(images[0], images[1])
-            util.write_out("\n")
-
-    def output_rpms(self, rpm_image_list):
-        """
-        Prints out the differences in RPMs when applicable
-        :param rpm_image_list:
-        :return: None
-        """
-        ip = RpmPrint(rpm_image_list)
-        if not self.args.json:
-            if ip.has_diff:
-                ip._print_diff(self.args.verbose)
-            else:
-                if self.args.names_only:
-                    util.write_out("\n{} and {} has the same RPMs.  Versions may differ.  Remove --names-only"
-                                   " to see if there are version differences.".format(ip.i1.name, ip.i2.name))
-                else:
-                    util.write_out("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
-
-        # Output JSON content
-        else:
-            rpm_json = ip._rpm_json()
-            for image in rpm_json.keys():
-                if image not in self.json_out:
-                    self.json_out[image] = rpm_json[image]
-                else:
-                    _tmp = self.json_out[image]
-                    _tmp.update(rpm_json[image])
-                    self.json_out[image] = _tmp
 
 class DiffObj(object):
     def __init__(self, docker_name):
@@ -456,28 +413,3 @@ class DiffFS(object):
         # Follow all common subdirs
         for _dir in compare_obj.subdirs.values():
             self.delta(_dir)
-
-    def print_results(self, left_docker_obj, right_docker_obj):
-        """
-        Pretty output for the results of the filesystem diff
-        :param left_docker_obj:
-        :param right_docker_obj:
-        :return:
-        """
-        def _print_diff(file_list):
-            for _file in file_list:
-                util.write_out("{0}{1}".format(5*" ", _file))
-
-        if all([len(self.left) == 0, len(self.right) == 0,
-                len(self.common_diff) == 0]):
-            util.write_out("\nThere are no file differences between {0} "
-                          "and {1}".format(left_docker_obj, right_docker_obj))
-        if len(self.left) > 0:
-            util.write_out("\nFiles only in {}:".format(left_docker_obj))
-            _print_diff(self.left)
-        if len(self.right) > 0:
-            util.write_out("\nFiles only in {}:".format(right_docker_obj))
-            _print_diff(self.right)
-        if len(self.common_diff):
-            util.write_out("\nCommon files that are different:")
-            _print_diff(self.common_diff)
