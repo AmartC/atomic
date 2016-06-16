@@ -7,9 +7,30 @@ from . import util
 from . import mount
 from . import Atomic
 
-''' This file is currently for the dbus call to diff which instead of outputing the results of diff onto the server side, will send over the arguments to the client which can then be formatted appropriately'''
+''' This file will handle both dbus calls and regular calls from Atomic '''
 
 class Diff(Atomic):
+
+    def diff_tty(self):
+        diff_dict = self.diff()
+        images = self.args.compares
+        helpers = DiffHelpers(self.args)
+        image_list = helpers.create_image_list(images)
+        rpm_image_list = self.create_rpm_image_list(image_list)
+
+        if not self.args.no_files and not self.args.json:
+            self._output_files(diff_dict[images[0]], diff_dict[images[1]], diff_dict["files_differ"], images[0], images[1])
+
+        if self.args.rpms and not self.args.json:
+            self._output_rpms(diff_dict[images[0]], diff_dict[images[1]], rpm_image_list)
+
+        if self.args.json:
+            json_data = dict()
+            for key in diff_dict.keys():
+                if "_only" in key or "files_different" in key or "_json" in key:
+                    json_data[key] = diff_dict[key]
+            util.output_json(json_data)
+
     def diff(self):
         '''
         Allows you to 'diff' the RPMs between two different docker images|containers.
@@ -29,35 +50,48 @@ class Diff(Atomic):
             # is RPM-based
             rpm_image_list = []
             if self.args.rpms:
-                for image in image_list:
-                    rpmimage = RpmDiff(image.chroot, image.name, self.args.names_only)
-                    if not rpmimage.is_rpm:
-                        helpers._cleanup(image_list)
-                        raise ValueError("{0} is not RPM based.".format(rpmimage.name))
-                    rpmimage._get_rpm_content()
-                    rpm_image_list.append(rpmimage)
+                rpm_image_list = self.create_rpm_image_list(image_list)
             file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
 
             if not self.args.no_files:
-                diff_dict[image_list[0].name] = file_diff.left
-                diff_dict[image_list[1].name] = file_diff.right
-                diff_dict['files_differ'] = file_diff.common_diff
+                if not self.args.json:
+                    diff_dict[image_list[0].name] = file_diff.left
+                    diff_dict[image_list[1].name] = file_diff.right
+                    diff_dict['files_differ'] = file_diff.common_diff
+
+                else:
+                    file_diff = DiffFS(image_list[0].chroot, image_list[1].chroot)
+                    for image in image_list:
+                        diff_dict['{}_only'.format(image.name)] = file_diff._get_only(image.chroot)
+                    diff_dict['files_different'] = file_diff.common_diff
 
             if self.args.rpms:
                 ip = RpmPrint(rpm_image_list)
-                diff_dict['{}_rpms'.format(ip.i1.name)] = []
-                diff_dict['{}_rpms'.format(ip.i2.name)] = []
-                if ip.has_diff:
-                    for rpm in ip.all_rpms:
-                        if rpm in ip.i1.rpms and rpm in ip.i2.rpms:
-                            diff_dict['{}_rpms'.format(ip.i1.name)].append(rpm)
-                            diff_dict['{}_rpms'.format(ip.i2.name)].append(rpm)
+                if not self.args.json:
+                    diff_dict['{}_rpm'.format(ip.i1.name)] = []
+                    diff_dict['{}_rpm'.format(ip.i2.name)] = []
+                    if ip.has_diff:
+                        for rpm in ip.all_rpms:
+                            if rpm in ip.i1.rpms and rpm in ip.i2.rpms:
+                                diff_dict['{}_rpm'.format(ip.i1.name)].append(rpm)
+                                diff_dict['{}_rpm'.format(ip.i2.name)].append(rpm)
 
-                        elif rpm in ip.i1.rpms:
-                            diff_dict['{}_rpms'.format(ip.i1.name)].append(rpm)
+                            elif rpm in ip.i1.rpms:
+                                diff_dict['{}_rpm'.format(ip.i1.name)].append(rpm)
 
-                        elif rpm in ip.i2.rpms:
-                            diff_dict['{}_rpms'.format(ip.i2.name)].append(rpm)
+                            elif rpm in ip.i2.rpms:
+                                diff_dict['{}_rpm'.format(ip.i2.name)].append(rpm)
+                else:
+                    rpm_json = ip._rpm_json()
+                    for image in rpm_json.keys():
+                        if image not in helpers.json_out:
+                            helpers.json_out = rpm_json[image]
+                            diff_dict['{}_json'.format(image)] = rpm_json[image]
+                        else:
+                            _tmp = helpers.json_out[image]
+                            _tmp.update(rpm_json[image])
+                            helpers.json_out[image] = _tmp
+                            diff_dict['{}_json'.format(image)] = _tmp
 
 
             helpers._cleanup(image_list)
@@ -67,6 +101,50 @@ class Diff(Atomic):
         except KeyboardInterrupt:
             util.write_out("Quitting...")
             helpers._cleanup(image_list)
+
+    def create_rpm_image_list(self, image_list):
+        rpm_image_list = []
+        for image in image_list:
+            rpmimage = RpmDiff(image.chroot, image.name, self.args.names_only)
+            if not rpmimage.is_rpm:
+                helpers._cleanup(image_list)
+                raise ValueError("{0} is not RPM based.".format(rpmimage.name))
+            rpmimage._get_rpm_content()
+            rpm_image_list.append(rpmimage)
+        return rpm_image_list
+
+    def _output_files(self, left_image, right_image, common_diff, left_image_name, right_image_name):
+        def _print_diff(file_list):
+            for _file in file_list:
+                util.write_out("{0}{1}".format(5*" ", _file))
+
+        if all([len(left_image) == 0, len(right_image) == 0,
+                len(common_diff) == 0]):
+            util.write_out("\nThere are no file differences between {0} "
+                          "and {1}".format(left_image_name, right_image_name))
+        if len(left_image) > 0:
+            util.write_out("\nFiles only in {}:".format(left_image_name))
+            _print_diff(left_image)
+        if len(right_image) > 0:
+            util.write_out("\nFiles only in {}:".format(right_image_name))
+            _print_diff(right_image)
+        if len(common_diff):
+            util.write_out("\nCommon files that are different:")
+            _print_diff(common_diff)
+
+
+    def _output_rpms(self, left_image, right_image, rpm_image_list):
+        ip = RpmPrint(rpm_image_list)
+        if ip.has_diff:
+            ip._print_diff(self.args.verbose)
+        else:
+            if self.args.names_only:
+                util.write_out("\n{} and {} has the same RPMs.  Versions may differ.  Remove --names-only"
+                " to see if there are version differences.".format(ip.i1.name, ip.i2.name))
+
+            else:
+                util.write_out("\n{} and {} have no different RPMs".format(ip.i1.name, ip.i2.name))
+
 
 class DiffHelpers(object):
     """

@@ -142,7 +142,7 @@ class atomic_dbus(slip.dbus.service.Object):
         args = self.Args()
         args.compares.append(first)
         args.compares.append(second)
-        args.json = False
+        args.json = True
         args.no_files = False
         args.names_only = False
         args.rpms = rpms
@@ -170,16 +170,16 @@ class atomic_dbus(slip.dbus.service.Object):
     The scan method scans an image or container for CVEs.
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asasbbasbasb',
+    @dbus.service.method("org.atomic", in_signature='asasbasbasb',
                          out_signature='')
-    def scan(self, scan_targets=[], scanners=None, _list=False, verbose=False, rootfs=[], all=False, images=False, containers=False ):
+    def scan(self, scan_targets=[], scanners=None,verbose=False, rootfs=[], all=False, images=False, containers=False ):
         scan = Scan()
         args = self.Args()
         args.scan_targets = scan_targets
         args.scanners = scanners
-        args.list = _list
+        args.list = False
         args.verbose = verbose
-        args.rootfs - rootfs
+        args.rootfs = rootfs
         args.images = images
         args.containers = containers
         scan.set_args(args)
