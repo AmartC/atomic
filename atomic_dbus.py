@@ -136,13 +136,13 @@ class atomic_dbus(slip.dbus.service.Object):
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='ssb',
-                         out_signature='a{sas}')
+                         out_signature='a{sa{sas}}')
     def diff(self,first,second, rpms=False):
         diff = Diff()
         args = self.Args()
         args.compares.append(first)
         args.compares.append(second)
-        args.json = True
+        args.json = False
         args.no_files = False
         args.names_only = False
         args.rpms = rpms

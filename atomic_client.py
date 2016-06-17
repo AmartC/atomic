@@ -84,9 +84,8 @@ if __name__ == "__main__":
             #case where rpms flag is passed in
             resp = dbus_proxy.diff(sys.argv[2], sys.argv[3], True)
             for key in resp.keys():
-                print key
                 for data in resp[key]:
-                    print data
+                    print resp[key][data]
 
         elif(sys.argv[1] == "top"):
             resp = dbus_proxy.top(1,[],1)
