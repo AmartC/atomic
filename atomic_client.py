@@ -46,8 +46,22 @@ class AtomicDBus (object):
         self.dbus_object.top([],interval, optional, num_iterations, dbus_interface="org.atomic")
 
     @polkit.enable_proxy
-    def scan(self, scan_targets, scanners, verbose, rootfs,all, images, containers):
-        self.dbus_object.scan([],[], True, False, False, True, False, dbus_interface="org.atomic")
+    def scan_list(self):
+        ret = self.dbus_object.get_scan_list(dbus_interface="org.atomic")
+        return ret
+
+    @polkit.enable_proxy
+    def scan_list(self):
+        ret = self.dbus_object.get_scan_list(dbus_interface="org.atomic")
+        return ret
+
+    @polkit.enable_proxy
+    def scan(self):
+        ret = self.dbus_object.scan(dbus_interface="org.atomic")
+        return ret
+
+
+
 
 if __name__ == "__main__":
     try:
@@ -88,11 +102,15 @@ if __name__ == "__main__":
                     print resp[key][data]
 
         elif(sys.argv[1] == "top"):
-            resp = dbus_proxy.top(1,[],1)
+            resp = dbus_proxy.top([],1,[],1)
 
-        elif(sys.argv[1] == "scan"):
-            resp = dbus_proxy.scan([],[],True, False, False, True, False)
-            print resp
+        elif(sys.argv[1] == "scan" and sys.argv[2] == "list"):
+            resp = dbus_proxy.scan_list()
+            for key in resp.keys():
+                print key
+                for sub_key in resp[key].keys():
+                    print sub_key
+                    print resp[key][sub_key]
 
     except dbus.DBusException as e:
         print e
