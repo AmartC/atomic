@@ -11,7 +11,7 @@ from Atomic.verify import Verify
 from Atomic.storage import Storage
 from Atomic.diff import Diff
 from Atomic.top import Top
-from Atomic.scan import Scan
+from Atomic.scanCp import Scan
 
 class atomic_dbus(slip.dbus.service.Object):
     default_polkit_auth_required = "org.atomic.readwrite"
@@ -156,7 +156,7 @@ class atomic_dbus(slip.dbus.service.Object):
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='asiasi',
                          out_signature='')
-    def top(self, containers = [], d=1, optional=[], n=1):
+    def top(self, containers, d, optional, n):
         top = Top()
         args = self.Args()
         args.containers = containers
@@ -167,24 +167,16 @@ class atomic_dbus(slip.dbus.service.Object):
         top.atomic_top()
 
     """
-    The scan method scans an image or container for CVEs.
+    The get_scan_list method will return a list of all scanners.
     """
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asasbasbbb',
-                         out_signature='')
-    def scan(self, scan_targets=[], scanners=None,verbose=False, rootfs=[], all=False, images=False, containers=False ):
+    @dbus.service.method("org.atomic", in_signature='',
+                         out_signature= 'a{sa{ss}}')
+    def get_scan_list(self):
         scan = Scan()
         args = self.Args()
-        args.scan_targets = scan_targets
-        args.scanners = scanners
-        args.list = False
-        args.verbose = verbose
-        args.rootfs = rootfs
-        args.images = images
-        args.containers = containers
         scan.set_args(args)
-        scan.scan()
-
+        return scan.get_scan_list()
 
 if __name__ == "__main__":
         mainloop = GLib.MainLoop()

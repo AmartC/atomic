@@ -28,6 +28,20 @@ class Scan(Atomic):
         self.rootfs_mappings = {}
         self.scanner = None
 
+    def get_scan_list(self):
+        scan_dict = dict()
+        if len(self.scanners) == 0:
+            sys.exit(0)
+
+        for scanner in self.scanners:
+            scanner_name = scanner['scanner_name']
+            scan_dict[scanner_name] = dict()
+            image_name = scanner['image_name']
+            scan_dict[scanner_name]['Image Name'] = image_name
+            for scan_type in scanner['scans']:
+                scan_dict[scanner_name][scan_type['name']] = scan_type['description']
+        return scan_dict
+
     def scan(self):
         def get_scan_info(scanner, scan_type):
             for i in self.scanners:
@@ -41,15 +55,16 @@ class Scan(Atomic):
             if len(self.scanners) == 0:
                 raise ValueError("No scanners are configured for your system.")
 
-            if len(self.scanners) == 1:
-                self.scanner = self.scanners[0]['scanner_name']
-
-            # If a scanner is defined in parseargs
             if self.args.scanner:
-                    self.scanner = self.args.scanner
+                self.scanner = self.args.scanner
+            elif len(self.scanners) == 1:
+                self.scanner = self.scanners[0]['scanner_name']
+            # Use default
+            else:
+                self.scanner = self.atomic_config['default_scanner']
 
             if self.scanner is None:
-                raise ValueError("You must specify a scanner")
+                raise ValueError("You must specify a scanner (--scanner) or set a default in /etc/atomic.conf")
 
             # Check if the scanner name is valid
             if self.scanner not in [x['scanner_name'] for x in self.scanners]:
@@ -61,12 +76,15 @@ class Scan(Atomic):
         # Set debug bool
         self.set_debug()
 
-        set_scanner()
-
+        # Show list of scanners and exit
         if self.args.list:
             self.print_scan_list()
 
+        set_scanner()
+
+
         scan_type = self.get_scan_type()
+
         # Load the atomic config file and check scanner settings
         yaml_error = "The image name or scanner arguments for '{}' is not " \
                      "defined in /etc/atomic.conf".format(self.scanner)
@@ -91,7 +109,6 @@ class Scan(Atomic):
         if len(self.args.rootfs) == 0:
             scan_list = self._get_scan_list()
             for i in scan_list:
-                i['Id'] = i['Id'].replace(":", "-")
                 self.scan_content[i['Id']] = i.get('input')
 
             # mount all the rootfs
