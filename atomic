@@ -290,7 +290,7 @@ def create_parser(atomic):
         action="store_true",
         help=_("preview the command that %s would execute") % sys.argv[0])
     installp.add_argument("image", help=_("container image"))
-    if Atomic.atomic.OSTREE_PRESENT:
+    if Atomic.syscontainers.OSTREE_PRESENT:
         installp.add_argument("--system", dest="system",
                               action='store_true', default=False,
                               help=_('install a system container'))
@@ -526,6 +526,10 @@ def create_parser(atomic):
     modifyp = storage_subparser.add_parser("modify",help='modify default storage setup')
     modifyp.add_argument('--add-device', metavar="DEVICE", dest="devices", default=[], action='append',
                          help=_("add block devices to storage pool"))
+    modifyp.add_argument('--remove-device', metavar="DEVICE", dest="remove_devices", default=[], action='append',
+                         help=_("remove block devices from storage pool"))
+    modifyp.add_argument('--remove-unused-devices', action='store_true',
+                         help=_("remove all unused block devices from storage pool"))
     modifyp.add_argument('--driver', dest="driver", default=None, help='The storage backend driver', choices=['devicemapper', 'overlay'])
     modifyp.set_defaults(_class=Storage, func='modify')
 
@@ -586,7 +590,7 @@ def create_parser(atomic):
     updatep.add_argument("-f", "--force", default=False, dest="force",
                          action="store_true",
                          help=_("remove all containers based on this image"))
-    if Atomic.atomic.OSTREE_PRESENT:
+    if Atomic.syscontainers.OSTREE_PRESENT:
         updatep.add_argument("--set", dest="setvalues",
                              action='append',
                              help=_("Specify a variable in the VARIABLE=VALUE "

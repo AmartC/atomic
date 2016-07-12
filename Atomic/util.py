@@ -232,6 +232,7 @@ def skopeo_layers(image, args=[], layers=[]):
     :param layers: if set, specify what layers must be downloaded
     :return: Returns the temporary directory with the layers
     """
+    success = False
     temp_dir = tempfile.mkdtemp()
     try:
         args = ['skopeo', 'layers'] + args + [image] + layers
@@ -239,10 +240,12 @@ def skopeo_layers(image, args=[], layers=[]):
         if r.return_code != 0:
             check_v1_registry(image)
             raise ValueError("Unable to interact with this registry: {}".format(r.stderr))
+        success = True
     except OSError:
         raise ValueError("skopeo must be installed to perform remote inspections")
     finally:
-        shutil.rmtree(temp_dir)
+        if not success:
+            shutil.rmtree(temp_dir)
 
     return temp_dir
 
@@ -263,7 +266,6 @@ class DockerObjectNotFound(ValueError):
     def __init__(self, msg):
         Exception.__init__(self, "Unable to associate '{}' with an image or container".format(msg))
 
-
 def get_atomic_config():
     """
     Returns the atomic configuration file (/etc/atomic.conf)
@@ -274,6 +276,24 @@ def get_atomic_config():
         raise ValueError("{} does not exist".format(ATOMIC_CONF))
     with open(ATOMIC_CONF, 'r') as conf_file:
         return yaml_load(conf_file)
+
+def get_atomic_config_item(config_items, atomic_config=None):
+    """
+    Lookup and return the atomic configuration file value
+    for a given structure. Returns None if the option
+    cannot be found.
+    """
+    def _recursive_get(atomic_config, items):
+        yaml_struct = atomic_config
+        try:
+            for i in items:
+                yaml_struct = yaml_struct[i]
+        except KeyError:
+            return None
+        return yaml_struct
+    if atomic_config is None:
+        atomic_config = get_atomic_config()
+    return _recursive_get(atomic_config, config_items)
 
 def get_scanners():
     scanners = []
@@ -306,11 +326,13 @@ def default_docker_lib():
 # Utilities for dealing with config files that use bourne shell
 # syntax, such as /etc/sysconfig/docker-storage-setup
 
+def sh_make_var_pattern(var):
+    return '^[ \t]*%s[ \t]*=[ \t]*"(.*)"[ \t]*$' % re.escape(var)
+
 def sh_modify_var_in_text(text, var, modifier, default=""):
-    pattern = '^[ \t]*%s[ \t]*=[ \t]*"(.*)"[ \t]*$' % re.escape(var)
     def sub(match):
         return var + '="' + modifier(match.group(1)) + '"'
-    (new_text, n_subs) = re.subn(pattern, sub, text, flags=re.MULTILINE)
+    (new_text, n_subs) = re.subn(sh_make_var_pattern(var), sub, text, flags=re.MULTILINE)
     if n_subs != 0:
         return new_text
     else:
@@ -325,8 +347,36 @@ def sh_modify_var_in_file(path, var, modifier, default=""):
     with open(path, "w") as f:
         f.write(sh_modify_var_in_text(text, var, modifier, default))
 
+def sh_get_var_in_text(text, var, default=""):
+    match = None
+    for match in re.finditer(sh_make_var_pattern(var), text, flags=re.MULTILINE):
+        pass
+    if match:
+        return match.group(1)
+    else:
+        return default
+
+def sh_get_var_in_file(path, var, default=""):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return sh_get_var_in_text(f.read(), var, default)
+    else:
+        return default
+
 def sh_set_add(a, b):
     return " ".join(list(set(a.split()) | set(b)))
 
 def sh_set_del(a, b):
     return " ".join(list(set(a.split()) - set(b)))
+
+def find_remote_image(client, image):
+    """
+    Based on the user's input, see if we can associate the input with a remote
+    registry and image.
+    :return: str(fq name)
+    """
+    results = client.search(image)
+    for x in results:
+        if x['name'] == image:
+            return '{}/{}'.format(x['registry_name'], x['name'])
+    return None
