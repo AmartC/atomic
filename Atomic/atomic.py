@@ -6,6 +6,7 @@ import math
 import pipes
 import getpass
 import argparse
+from datetime import datetime
 from .client import AtomicDocker
 from .syscontainers import SystemContainers
 
@@ -1112,6 +1113,29 @@ class Atomic(object):
     def set_debug(self):
         if self.args.debug:
             self.debug = True
+
+    def get_last_time_all_scanned(self):
+        """
+        Will read through the scan_summary.json file and get the most recent scan's time.
+        """
+        try:
+            with open(os.path.join(self.results, "scan_summary.json"), "r") as scan_summary:
+                summary_results = json.loads(scan_summary.read())
+            mostRecentTime = ""
+            currentTime = ""
+            for uuid in summary_results.keys():
+                if len(summary_results[uuid].keys()) > 0:
+                    if summary_results[uuid]["All"]:
+                        if not mostRecentTime:
+                            mostRecentTime = datetime.strptime(summary_results[uuid]["Time"].replace("T", " "), "%Y-%m-%d %H:%M:%S")
+                        else:
+                            currentTime = datetime.strptime(summary_results[uuid]["Time"].replace("T", " "), "%Y-%m-%d %H:%M:%S")
+                            if currentTime > mostRecentTime:
+                                mostRecentTime = currentTime
+            return mostRecentTime
+
+        except IOError:
+            return "{}"
 
     def get_all_vulnerable_info(self):
         """

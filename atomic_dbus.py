@@ -1,7 +1,7 @@
 #!/usr/bin/python -Es
 
 import dbus
-import time
+from time import sleep
 import threading
 import dbus.service
 import dbus.mainloop.glib
@@ -70,7 +70,7 @@ class atomic_dbus(slip.dbus.service.Object):
                 result = current_task[1].scan()
                 with self.results_lock:
                     self.results[current_task[0]] = result
-            time.sleep(1)
+            sleep(1)
 
     def AllocateToken(self):
         with self.tasks_lock:
@@ -186,6 +186,18 @@ class atomic_dbus(slip.dbus.service.Object):
         scan_list.set_args(args)
         return scan_list.get_scanners_list()
 
+    # The LastScanned method will return the time of the last scan which was done.
+    @slip.dbus.polkit.require_auth("org.atomic.read")
+    @dbus.service.method("org.atomic", in_signature='', out_signature='s')
+    def LastScanned(self):
+        scan = Scan()
+        args = self.Args()
+        scan.set_args(args)
+        last_scanned = scan.get_last_time_all_scanned()
+        if last_scanned:
+            return last_scanned.strftime("%Y-%m-%d %H:%M:%S")
+        return "Last scan time was not found"
+
     # The ScanSetup method will create the scan object.
     def _ScanSetup(self, scan_targets, scanner, scan_type, rootfs, _all, images, containers):
         scan = Scan()
@@ -270,11 +282,9 @@ class atomic_dbus(slip.dbus.service.Object):
     @dbus.service.method("org.atomic", in_signature='', out_signature='s')
     def Ps(self):
         ps = Ps()
-        ps.useTTY = False
         args = self.Args()
         ps.set_args(args)
         return json.dumps(ps.ps())
-
 
 if __name__ == "__main__":
     mainloop = GLib.MainLoop()

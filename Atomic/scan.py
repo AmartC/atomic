@@ -188,6 +188,17 @@ class Scan(Atomic):
             scan_list = []
             images = self.get_images()
             containers = self.get_containers()
+            all_names = []
+            for image in images:
+                for each in image["RepoTags"]:
+                    all_names.append(each.split(":")[0])
+            for container in containers:
+                for each in container['Names']:
+                    all_names.append(each)
+
+            if set(self.args.scan_targets) == set(all_names):
+                self.args.all = True
+
             for scan_input in self.args.scan_targets:
                 docker_object = (next((item for item in containers
                                        if item['Id'] == self.get_input_id(scan_input)), None))
@@ -457,6 +468,7 @@ class Scan(Atomic):
         persist['Scanner'] = json_results['Scanner']
         persist['Time'] = json_results['Time']
         persist['Scan Type'] = json_results['Scan Type']
+        persist['All'] = self.args.all
         if 'Vulnerabilities' in json_results and len(json_results['Vulnerabilities']) > 0:
             persist["Vulnerable"] =  True
         elif json_results.get('Vulnerable') is True:

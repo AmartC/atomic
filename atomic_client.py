@@ -1,7 +1,7 @@
 import sys
 import json
 import dbus
-import time
+from time import sleep
 import dbus.service
 import dbus.mainloop.glib
 from Atomic import util
@@ -56,7 +56,7 @@ class AtomicDBus (object):
             ret = self.dbus_object.GetScanResults(token, dbus_interface="org.atomic")
             if ret:
                 break
-            time.sleep(1)
+            sleep(1)
 
         return ret
 
@@ -80,6 +80,10 @@ class AtomicDBus (object):
     @polkit.enable_proxy
     def ps(self):
         return self.dbus_object.Ps(dbus_interface="org.atomic", timeout = 2147400)
+
+    @polkit.enable_proxy
+    def last_scanned(self):
+        return self.dbus_object.LastScanned(dbus_interface="org.atomic", timeout = 2147400)
 #For outputting the list of scanners
 def print_scan_list(all_scanners):
     if len(all_scanners) == 0:
@@ -170,6 +174,9 @@ if __name__ == "__main__":
 
         elif(sys.argv[1] == "ps"):
             print(json.loads(dbus_proxy.ps()))
+
+        elif(sys.argv[1] == "last_scanned"):
+            print(dbus_proxy.last_scanned())
 
     except dbus.DBusException as e:
         print (e)
